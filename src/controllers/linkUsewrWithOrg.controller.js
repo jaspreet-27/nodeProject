@@ -27,7 +27,7 @@ const linkUser = async (req, res) => {
 
         res.json({
             status: true,
-            message: 'User linked to organization successfully.',
+            message: 'User linked to organization successfully....',
             data:link,
         });
     } catch (error) {
