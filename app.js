@@ -12,8 +12,6 @@ const bodyParser = require("body-parser");
 app.use(express.json());
 app.use(bodyParser.json());
 app.use('/', my_routes)
-
-
 app.listen(8000,(req,res)=>{
     console.log("serving is running on 8000 port")
 })

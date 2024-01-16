@@ -1,7 +1,11 @@
 
 
-const {createUserSchema} = require("../validations/user.Validations")
+const {createUserSchema,loginUserSchema} = require("../validations/user.Validations")
 const userService = require("../services/user.Service")
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const userModel = require("../models/user.Schema")
+const activeuser = require("../models/active.Users")
 
 
 // const createUser = async (req, res) => {
@@ -51,5 +55,110 @@ const createUser = async (req, res) => {
     }
 };
 
+// const loginUser = async (req, res) => {
+//     console.log("im login")
+//     const { error } = loginUserSchema.validate(req.body);
 
-module.exports = {createUser}
+//     if (error) {
+//         return res.status(400).json({ error: error.details.map((err) => err.message) });
+//     }
+//     const { email, password } = req.body
+//     try {
+//         const user = await userModel.findOne({ email: email })
+//         if (user) {
+//             let isPasswordValid = await bcrypt.compare(password, user.password)
+//             if (!!isPasswordValid) {
+//                 const token = jwt.sign({ user_id: user?._id, email }, process.env.TOKEN_KEY);
+//                 res.send({
+//                     data: { user, token },
+//                     status: true
+//                 })
+//             } else {
+
+//                 let responseObj = { status: 403, json: { status: false, error: "password/email not correct" } }
+//                 res.responseObj = responseObj
+//                 next(res)
+//             }
+//         } else {
+//             res.status(403).json({ status: false, error: "password/email not correct" })
+//         }
+//     } catch (error) {
+//         // next(error);
+//     }
+// }
+// const   loginUser= async (req, res) => {
+//     const { error } = loginUserSchema.validate(req.body);
+
+//     if (error) {
+//         return res.status(400).json({ error: error.details.map((err) => err.message) });
+//     }
+
+//     const { email, password } = req.body;
+
+//     const loginResult = await userService.loginUser(email, password);
+
+//     if (loginResult.status) {
+//         res.send(loginResult);
+//     } else {
+//         res.status(403).json(loginResult);
+//     }
+// };
+
+const loginUser = async (req, res) => {
+    console.log("im login");
+    const { error } = loginUserSchema.validate(req.body);
+
+    if (error) {
+        return res.status(400).json({ error: error.details.map((err) => err.message) });
+    }
+
+    const { email, password } = req.body;
+
+    try {
+        const user = await userModel.findOne({ email });
+
+        if (user) {
+            // Check if the user is in the active list
+            // const isActive = await activeuser.findOne({ user: user._id });
+
+            // if (isActive) {
+            //     res.status(403).json({ status: false, error: "User is in the active list. Cannot log in." });
+            //     return;
+            // }
+
+            let isPasswordValid = await bcrypt.compare(password, user.password);
+
+            if (isPasswordValid) {
+                const token = jwt.sign({ user_id: user._id, email }, process.env.TOKEN_KEY);
+                res.send({
+                    data: { user, token },
+                    status: true,
+                });
+
+                const isActive = await activeuser.findOne({ user: user._id });
+
+                if (isActive) { 
+                    res.status(403).json({ status: false, error: "User is in the active list. Cannot log in." });
+                    return;
+                }
+                 const activeUser = new activeuser({ user: user._id });
+                await activeUser.save();
+    
+            } else {
+                let responseObj = { status: 403, json: { status: false, error: "Password/email not correct" } };
+                res.responseObj = responseObj;
+                next(res);
+            }
+        } else {
+            res.status(403).json({ status: false, error: "Password/email not correct" });
+        }
+    } catch (error) {
+        console.error(error);
+        // Handle other errors or simply propagate the error
+        res.status(500).json({ status: false, error: "Internal Server Error" });
+    }
+};
+
+
+
+module.exports = {createUser,  loginUser}
